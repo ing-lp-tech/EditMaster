@@ -20,7 +20,7 @@ export default function AdminDashboard() {
         ] = await Promise.all([
           supabase.from('perfiles').select('*', { count: 'exact', head: true }).eq('rol', 'estudiante'),
           supabase.from('finanzas_movimientos').select('monto, tipo, monto_pagado, tiene_deuda'),
-          supabase.from('cupones').select('id, usos_actuales').gt('usos_actuales', 0),
+          supabase.from('cupones').select('id, used_count').gt('used_count', 0),
         ]);
 
         // Ingresos: lo efectivamente cobrado (monto_pagado si tiene deuda, monto si no)
@@ -33,7 +33,7 @@ export default function AdminDashboard() {
           .filter(f => f.tipo === 'ingreso' && f.tiene_deuda).length;
 
         // Usos de cupones
-        const con_descuento = (cupones || []).reduce((a, c) => a + (c.usos_actuales || 0), 0);
+        const con_descuento = (cupones || []).reduce((a, c) => a + (c.used_count || 0), 0);
 
         setStats({
           estudiantes:      est || 0,

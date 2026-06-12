@@ -9,13 +9,13 @@ export default function ConfiguracionPage() {
     precio_tachado: '',
     fecha_inicio: '',
     test_mode_mp: false,
-    site_url: 'https://www.molderia-digital.com',
-    moldes_cbu: '',
-    moldes_alias: '',
-    moldes_titular: '',
-    moldes_banco: '',
-    moldes_descuento_transferencia: '0',
-    moldes_whatsapp_comprobante: '',
+    site_url: 'https://www.editmaster.co',
+    cbu: '',
+    alias_cbu: '',
+    titular_cuenta: '',
+    banco: '',
+    descuento_transferencia: '0',
+    wapp_admin: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,17 +30,17 @@ export default function ConfiguracionPage() {
         if (data) {
           const map = Object.fromEntries(data.map(r => [r.id, r.value]));
           setForm({
-            precio_base:    map.precio_base    ?? '400000',
-            precio_tachado: map.precio_tachado ?? '650000',
-            fecha_inicio:   map.fecha_inicio   ?? '13 de Marzo',
+            precio_base:    map.precio_base    ?? '350000',
+            precio_tachado: map.precio_tachado ?? '500000',
+            fecha_inicio:   map.fecha_inicio   ?? '15 de Julio',
             test_mode_mp:   map.test_mode_mp === true || map.test_mode_mp === 'true',
-            site_url:       map.site_url ?? 'https://www.molderia-digital.com',
-            moldes_cbu:                     map.moldes_cbu                     ?? '',
-            moldes_alias:                   map.moldes_alias                   ?? '',
-            moldes_titular:                 map.moldes_titular                 ?? '',
-            moldes_banco:                   map.moldes_banco                   ?? '',
-            moldes_descuento_transferencia: map.moldes_descuento_transferencia ?? '0',
-            moldes_whatsapp_comprobante:    map.moldes_whatsapp_comprobante    ?? '',
+            site_url:       map.site_url ?? 'https://www.editmaster.co',
+            cbu:                     map.cbu                     ?? '',
+            alias_cbu:               map.alias_cbu               ?? '',
+            titular_cuenta:          map.titular_cuenta          ?? '',
+            banco:                   map.banco                   ?? '',
+            descuento_transferencia: map.descuento_transferencia ?? '0',
+            wapp_admin:              map.wapp_admin              ?? '',
           });
         }
         setLoading(false);
@@ -60,12 +60,12 @@ export default function ConfiguracionPage() {
       { id: 'fecha_inicio',   value: form.fecha_inicio.trim() },
       { id: 'test_mode_mp',   value: String(form.test_mode_mp) },
       { id: 'site_url',       value: form.site_url.trim() },
-      { id: 'moldes_cbu',                     value: form.moldes_cbu.trim() },
-      { id: 'moldes_alias',                   value: form.moldes_alias.trim() },
-      { id: 'moldes_titular',                 value: form.moldes_titular.trim() },
-      { id: 'moldes_banco',                   value: form.moldes_banco.trim() },
-      { id: 'moldes_descuento_transferencia', value: String(Number(form.moldes_descuento_transferencia) || 0) },
-      { id: 'moldes_whatsapp_comprobante',    value: form.moldes_whatsapp_comprobante.trim().replace(/\D/g, '') },
+      { id: 'cbu',                     value: form.cbu.trim() },
+      { id: 'alias_cbu',               value: form.alias_cbu.trim() },
+      { id: 'titular_cuenta',          value: form.titular_cuenta.trim() },
+      { id: 'banco',                   value: form.banco.trim() },
+      { id: 'descuento_transferencia', value: String(Number(form.descuento_transferencia) || 0) },
+      { id: 'wapp_admin',              value: form.wapp_admin.trim().replace(/\D/g, '') },
     ];
 
     const { error: err } = await supabase
@@ -197,7 +197,7 @@ export default function ConfiguracionPage() {
               value={form.fecha_inicio}
               onChange={e => setForm(p => ({ ...p, fecha_inicio: e.target.value }))}
               className="input-field"
-              placeholder="Ej: 13 de Marzo"
+              placeholder="Ej: 15 de Julio"
             />
             <p className="text-[10px] text-on-surface-variant mt-1.5">
               Aparece en el badge de la landing y en el sidebar de inscripción.
@@ -213,7 +213,7 @@ export default function ConfiguracionPage() {
               value={form.site_url}
               onChange={e => setForm(p => ({ ...p, site_url: e.target.value }))}
               className="input-field"
-              placeholder="https://www.molderia-digital.com"
+              placeholder="https://www.editmaster.co"
             />
             <p className="text-[10px] text-on-surface-variant mt-1.5">
               Link que se envía por WhatsApp al consultar o al compartir datos de acceso a alumnos.
@@ -242,36 +242,36 @@ export default function ConfiguracionPage() {
           </label>
         </div>
 
-        {/* Moldes y Pagos */}
+        {/* Métodos de Pago */}
         <div className="card border border-outline-variant/20 space-y-5">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-tertiary">straighten</span>
-            <h3 className="font-headline font-bold text-base">Moldes — Métodos de Pago</h3>
+            <span className="material-symbols-outlined text-tertiary">account_balance</span>
+            <h3 className="font-headline font-bold text-base">Métodos de Pago — Transferencia</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">CBU</label>
-              <input type="text" value={form.moldes_cbu}
-                onChange={e => setForm(p => ({ ...p, moldes_cbu: e.target.value }))}
+              <input type="text" value={form.cbu}
+                onChange={e => setForm(p => ({ ...p, cbu: e.target.value }))}
                 className="input-field font-mono" placeholder="0000000000000000000000" />
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Alias</label>
-              <input type="text" value={form.moldes_alias}
-                onChange={e => setForm(p => ({ ...p, moldes_alias: e.target.value }))}
-                className="input-field" placeholder="molditex.pagos" />
+              <input type="text" value={form.alias_cbu}
+                onChange={e => setForm(p => ({ ...p, alias_cbu: e.target.value }))}
+                className="input-field" placeholder="editmaster.pagos" />
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Titular de la cuenta</label>
-              <input type="text" value={form.moldes_titular}
-                onChange={e => setForm(p => ({ ...p, moldes_titular: e.target.value }))}
+              <input type="text" value={form.titular_cuenta}
+                onChange={e => setForm(p => ({ ...p, titular_cuenta: e.target.value }))}
                 className="input-field" placeholder="Nombre Apellido" />
             </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Banco</label>
-              <input type="text" value={form.moldes_banco}
-                onChange={e => setForm(p => ({ ...p, moldes_banco: e.target.value }))}
+              <input type="text" value={form.banco}
+                onChange={e => setForm(p => ({ ...p, banco: e.target.value }))}
                 className="input-field" placeholder="Banco Galicia" />
             </div>
           </div>
@@ -280,14 +280,14 @@ export default function ConfiguracionPage() {
             <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">
               Descuento por transferencia (%)
             </label>
-            <input type="number" min="0" max="100" step="1" value={form.moldes_descuento_transferencia}
-              onChange={e => setForm(p => ({ ...p, moldes_descuento_transferencia: e.target.value }))}
+            <input type="number" min="0" max="100" step="1" value={form.descuento_transferencia}
+              onChange={e => setForm(p => ({ ...p, descuento_transferencia: e.target.value }))}
               className="input-field w-32" />
             <p className="text-[10px] text-on-surface-variant mt-1.5">
               0 = la opción de transferencia no aparece en el checkout.
-              {Number(form.moldes_descuento_transferencia) > 0 && (
+              {Number(form.descuento_transferencia) > 0 && (
                 <span className="text-secondary ml-1">
-                  Actualmente: {form.moldes_descuento_transferencia}% de descuento al pagar por transferencia.
+                  Actualmente: {form.descuento_transferencia}% de descuento al pagar por transferencia.
                 </span>
               )}
             </p>
@@ -297,8 +297,8 @@ export default function ConfiguracionPage() {
             <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">
               WhatsApp para comprobantes y envío de links
             </label>
-            <input type="text" value={form.moldes_whatsapp_comprobante}
-              onChange={e => setForm(p => ({ ...p, moldes_whatsapp_comprobante: e.target.value }))}
+            <input type="text" value={form.wapp_admin}
+              onChange={e => setForm(p => ({ ...p, wapp_admin: e.target.value }))}
               className="input-field font-mono" placeholder="5491162020911" />
             <p className="text-[10px] text-on-surface-variant mt-1.5">
               Solo números, sin + ni espacios. Ej: 5491162020911 (código país + área + número).

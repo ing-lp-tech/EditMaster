@@ -651,7 +651,7 @@ GRANT INSERT ON public.pedidos_edicion         TO anon;
 -- authenticated: acceso a las tablas que usa el front
 GRANT SELECT, UPDATE                         ON public.perfiles               TO authenticated;
 GRANT SELECT                                 ON public.cupones                TO authenticated;
-GRANT SELECT                                 ON public.app_settings           TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE         ON public.app_settings           TO authenticated;
 GRANT SELECT                                 ON public.certificados           TO authenticated;
 GRANT SELECT                                 ON public.recursos               TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE         ON public.carpetas               TO authenticated;

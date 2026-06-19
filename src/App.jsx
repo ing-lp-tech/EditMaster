@@ -21,6 +21,7 @@ const RecursosPage      = lazy(() => import('./pages/admin/RecursosPage'));
 const ConfiguracionPage = lazy(() => import('./pages/admin/ConfiguracionPage'));
 const PapeleraPage      = lazy(() => import('./pages/admin/PapeleraPage'));
 const PedidosEdicionPage = lazy(() => import('./pages/admin/PedidosEdicionPage'));
+const AdminsPage        = lazy(() => import('./pages/admin/AdminsPage'));
 const StudentPortal      = lazy(() => import('./pages/student/StudentPortal'));
 const EdicionServicioPage = lazy(() => import('./pages/EdicionServicioPage'));
 
@@ -87,6 +88,7 @@ export default function App() {
             <Route path="configuracion" element={<Suspense fallback={<AdminFallback />}><ConfiguracionPage /></Suspense>} />
             <Route path="papelera"      element={<Suspense fallback={<AdminFallback />}><PapeleraPage /></Suspense>} />
             <Route path="pedidos"       element={<Suspense fallback={<AdminFallback />}><PedidosEdicionPage /></Suspense>} />
+            <Route path="perfiles"      element={<Suspense fallback={<AdminFallback />}><AdminsPage /></Suspense>} />
           </Route>
 
           {/* Catch-all → home */}

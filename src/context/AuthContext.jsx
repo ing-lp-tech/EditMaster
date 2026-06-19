@@ -6,28 +6,27 @@ const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '')
   .map(e => e.trim().toLowerCase())
   .filter(Boolean);
 
+const SUPER_ADMIN_EMAIL = 'ing.lp.tech@gmail.com';
+
 const AuthContext = createContext({});
 
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [perfil, setPerfil]   = useState(null);
-  const [loading, setLoading] = useState(true);
-  const initDone = useRef(false); // evita doble inicialización
+  const [user, setUser]         = useState(null);
+  const [perfil, setPerfil]     = useState(null);
+  const [permisos, setPermisos] = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const initDone = useRef(false);
 
   useEffect(() => {
-    // Timeout de seguridad: si algo falla, no quedar colgado en spinner
     const safetyTimeout = setTimeout(() => setLoading(false), 10_000);
 
-    // ── Paso 1: leer sesión actual desde localStorage (sin red)
-    // getSession() maneja token expirado: si hay refresh token válido, lo renueva
-    // y devuelve la sesión correcta. NO retorna null mientras renueva.
     supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(safetyTimeout);
       initDone.current = true;
       setUser(session?.user ?? null);
-      if (session?.user) fetchPerfil(session.user.id);
+      if (session?.user) fetchAll(session.user);
       else setLoading(false);
     }).catch(() => {
       clearTimeout(safetyTimeout);
@@ -35,20 +34,15 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    // ── Paso 2: escuchar cambios POSTERIORES a la inicialización
-    // Se salta INITIAL_SESSION para evitar la race condition:
-    // onAuthStateChange dispara INITIAL_SESSION con null mientras el token
-    // se está refrescando, lo que causaba un redirect prematuro al login.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // Ignorar el evento inicial — ya lo maneja getSession() arriba
         if (event === 'INITIAL_SESSION') return;
-
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchPerfil(session.user.id);
+          await fetchAll(session.user);
         } else {
           setPerfil(null);
+          setPermisos(null);
           setLoading(false);
         }
       }
@@ -74,25 +68,50 @@ export function AuthProvider({ children }) {
     };
   }, [user]);
 
-  async function fetchPerfil(userId) {
-    // Timeout de 8s: evita que loading quede en true indefinidamente
-    // si Supabase no responde (problema con CSP, red o clave inválida)
+  async function fetchAll(authUser) {
+    const email = authUser.email?.toLowerCase() ?? '';
+    const isSuperAdminUser = email === SUPER_ADMIN_EMAIL;
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('fetchPerfil timeout')), 8_000)
+      setTimeout(() => reject(new Error('fetchAll timeout')), 8_000)
     );
+
     try {
-      const { data, error } = await Promise.race([
-        supabase
-          .from('perfiles')
-          .select('id, nombre, apellido, email, telefono, rol, activo, created_at')
-          .eq('id', userId)
-          .single(),
-        timeoutPromise,
-      ]);
-      if (error) throw error;
-      setPerfil(data);
+      if (isSuperAdminUser) {
+        // Super admin: solo necesita su perfil, tiene acceso total
+        const { data } = await Promise.race([
+          supabase
+            .from('perfiles')
+            .select('id, nombre, apellido, email, telefono, rol, activo, created_at')
+            .eq('id', authUser.id)
+            .single(),
+          timeoutPromise,
+        ]);
+        if (data) setPerfil(data);
+        setPermisos(null); // null = acceso completo
+      } else {
+        // Posible sub-admin: cargar perfil y permisos en paralelo
+        const [perfilRes, permRes] = await Promise.race([
+          Promise.all([
+            supabase
+              .from('perfiles')
+              .select('id, nombre, apellido, email, telefono, rol, activo, created_at')
+              .eq('id', authUser.id)
+              .single(),
+            supabase
+              .from('admin_permisos')
+              .select('*')
+              .eq('email', email)
+              .maybeSingle(),
+          ]),
+          timeoutPromise,
+        ]);
+        if (!perfilRes.error && perfilRes.data) setPerfil(perfilRes.data);
+        // permRes.data es null si no hay registro → acceso completo (admin viejo sin restricciones)
+        setPermisos(permRes?.data ?? null);
+      }
     } catch {
-      // El perfil es opcional: si falla, se usa VITE_ADMIN_EMAILS como fallback
+      // Timeout o error de red: continuar sin permisos granulares
+      setPermisos(null);
     } finally {
       setLoading(false);
     }
@@ -106,17 +125,20 @@ export function AuthProvider({ children }) {
     if (e?.preventDefault) e.preventDefault();
     setUser(null);
     setPerfil(null);
-    // Primero invalidar sesión en Supabase (server-side), luego limpiar local
+    setPermisos(null);
     try { await supabase.auth.signOut(); } catch {}
     window.location.href = '/login';
   }
 
+  const isSuperAdmin = user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
   const isAdmin =
+    isSuperAdmin ||
     perfil?.rol === 'admin' ||
+    (!!permisos && permisos.activo !== false) ||
     (ADMIN_EMAILS.length > 0 && ADMIN_EMAILS.includes(user?.email?.toLowerCase()));
 
   return (
-    <AuthContext.Provider value={{ user, perfil, loading, isAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, perfil, permisos, loading, isAdmin, isSuperAdmin, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

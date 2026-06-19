@@ -438,8 +438,9 @@ export default function TablreroKanban() {
                   <select value={taskModal.encargado || 'ninguno'} onChange={e => setTaskModal(p => ({ ...p, encargado: e.target.value }))} className="input-field text-sm">
                     <option value="ninguno">Sin asignar</option>
                     <option value="luis">Luis</option>
-                    <option value="cristian">Cristian</option>
-                    <option value="ambos">Ambos</option>
+                    <option value="gonzalo">Gonzalo</option>
+                    <option value="duarte">Duarte</option>
+                    <option value="todos">Todos</option>
                   </select>
                 </div>
               </div>

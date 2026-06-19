@@ -63,7 +63,20 @@ export default function LoginPage() {
         // Ignorar — se usa ADMIN_EMAILS como fallback
       }
 
-      const isUserAdmin = metaRol === 'admin' || dbRol === 'admin' || ADMIN_EMAILS.includes(userEmail);
+      // Verificar si el usuario es sub-admin con permisos asignados
+      let isSubAdmin = false;
+      try {
+        const { data: permData } = await supabase
+          .from('admin_permisos')
+          .select('id')
+          .eq('email', userEmail)
+          .maybeSingle();
+        isSubAdmin = !!permData;
+      } catch {
+        // Tabla aún no creada o error de red — ignorar
+      }
+
+      const isUserAdmin = metaRol === 'admin' || dbRol === 'admin' || ADMIN_EMAILS.includes(userEmail) || isSubAdmin;
 
       navigate(isUserAdmin ? '/admin' : '/portal', { replace: true });
     } catch (ex) {

@@ -1843,7 +1843,7 @@ export default function FinanzasPage() {
                                 </div>
                                 <div className="flex gap-2 pt-1">
                                   <button type="button" onClick={guardarEditPago}
-                                    className="flex-1 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 text-xs font-bold transition-colors">
+                                    className="flex-1 py-1.5 rounded-lg bg-primary/20 text-primary hover:bg-primary/50 text-xs font-bold transition-colors">
                                     Guardar cambio
                                   </button>
                                   <button type="button" onClick={() => setEditingPagoId(null)}

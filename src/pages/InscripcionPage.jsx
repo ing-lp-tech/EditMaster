@@ -362,7 +362,7 @@ export default function InscripcionPage() {
                     type="button"
                     onClick={handleAplicarCupon}
                     disabled={!cuponInput.trim() || cuponLoading}
-                    className="px-4 py-2 bg-primary/20 text-primary hover:bg-primary/30 rounded-xl font-headline font-bold uppercase text-xs tracking-widest transition-all disabled:opacity-40 shrink-0"
+                    className="px-4 py-2 bg-primary/20 text-primary hover:bg-primary/50 rounded-xl font-headline font-bold uppercase text-xs tracking-widest transition-all disabled:opacity-40 shrink-0"
                   >
                     {cuponLoading ? '...' : 'Aplicar'}
                   </button>

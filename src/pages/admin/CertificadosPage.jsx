@@ -531,7 +531,7 @@ export default function CertificadosPage() {
                 disabled={guardando || !nombreCertificado.trim()}
                 className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-headline font-bold uppercase text-xs tracking-widest transition-all ${guardadoOk
                   ? 'bg-secondary/20 text-secondary'
-                  : 'bg-primary/20 text-primary hover:bg-primary/30 disabled:opacity-50'
+                  : 'bg-primary/20 text-primary hover:bg-primary/50 disabled:opacity-50'
                   }`}
               >
                 <span className="material-symbols-outlined text-base">

@@ -136,7 +136,7 @@ export default function CuponesPage() {
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary/20 text-primary hover:bg-primary/30 rounded-xl font-headline font-bold uppercase text-xs tracking-widest transition-all"
+          className="btn-primary"
         >
           <span className="material-symbols-outlined text-xl">add</span>
           Nuevo Cupón
@@ -290,7 +290,7 @@ export default function CuponesPage() {
               <button
                 onClick={handleSave}
                 disabled={!form.code || !form.value || saving}
-                className="flex-1 py-3 bg-primary/20 text-primary hover:bg-primary/30 rounded-xl font-headline font-bold uppercase text-xs tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {saving ? 'Guardando...' : editingId ? 'Guardar Cambios' : 'Crear Cupón'}
               </button>
@@ -317,7 +317,7 @@ export default function CuponesPage() {
           <p className="text-on-surface-variant text-sm mb-6">Crea el primer cupón de descuento para el curso</p>
           <button
             onClick={openNew}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary/20 text-primary hover:bg-primary/30 rounded-xl font-headline font-bold uppercase text-xs tracking-widest transition-all"
+            className="btn-primary"
           >
             <span className="material-symbols-outlined text-xl">add</span>
             Crear Primer Cupón

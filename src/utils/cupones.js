@@ -126,15 +126,14 @@ export async function useCupon(id) {
 // ─── Flash Promo ──────────────────────────────────────────────────────────────
 
 export async function getActiveFlashPromo() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('cupones')
     .select('*')
     .eq('active', true)
     .eq('is_flash', true)
-    .is('eliminado_en', null)
     .gt('expires_at', new Date().toISOString())
     .order('expires_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return fromDB(data);
+    .limit(1);
+  if (error) console.warn('[FlashPromo] Supabase error:', error.message, error);
+  return fromDB(data?.[0] ?? null);
 }

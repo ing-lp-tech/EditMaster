@@ -28,6 +28,7 @@ const vercelApiMock = (env) => ({
         'create-molde-transferencia',
         'molde-aprobar',
         'create-admin-user',
+        'webhook-mercado-pago',
       ];
       const matched = ROUTES.find(r => req.url.includes(r));
 
@@ -72,6 +73,8 @@ const vercelApiMock = (env) => ({
             handler = (await import('./api/molde-aprobar.js')).default;
           } else if (matched === 'create-admin-user') {
             handler = (await import('./api/create-admin-user.js')).default;
+          } else if (matched === 'webhook-mercado-pago') {
+            handler = (await import('./api/webhook-mercado-pago.js')).default;
           }
 
           await handler(req, res);

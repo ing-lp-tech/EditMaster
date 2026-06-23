@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { items, payer_email } = req.body || {};
+    const { items, payer_email, externalReference } = req.body || {};
 
     // Validar email
     if (!validateEmail(payer_email)) {
@@ -95,6 +95,7 @@ export default async function handler(req, res) {
       body: {
         items: sanitizedItems,
         payer: { email: payer_email.toLowerCase().trim() },
+        external_reference: externalReference || null,
         back_urls: {
           success: `${baseUrl}/inscripcion?status=success`,
           pending: `${baseUrl}/inscripcion?status=pending`,
@@ -105,6 +106,12 @@ export default async function handler(req, res) {
         expires: true,
         expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
       },
+    });
+
+    console.log('[MP_PREFERENCE]', {
+      preference_id: response.id,
+      external_reference: externalReference,
+      email: payer_email,
     });
 
     return res.status(200).json({ init_point: response.init_point, id: response.id });

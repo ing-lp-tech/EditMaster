@@ -159,11 +159,39 @@ export default function InscripcionPage() {
     try {
       const cuponLabel = cuponResult?.valid ? ` | Cupón: ${cuponResult.cupon.code} (${cuponResult.label})` : '';
 
-      const res = await fetch('/api/create-preference', {
+      // 1. PRIMERO: Crear solicitud de inscripción en Supabase
+      const { data: newSolicitud, error: insertError } = await supabase
+        .from('solicitudes_inscripcion')
+        .insert({
+          nombre:             form.nombre.trim(),
+          apellido:           form.apellido.trim(),
+          email:              form.email.trim().toLowerCase(),
+          telefono:           form.telefono.trim() || null,
+          consulta:           form.consulta.trim() || null,
+          plan_id:            planSeleccionado?.id,
+          plan_label:         planSeleccionado?.label,
+          monto:              montoEfectivo,
+          monto_original:     planSeleccionado?.monto || precio_base,
+          descuento_aplicado: cuponResult?.valid ? cuponResult.discount : 0,
+          cupon_codigo:       cuponResult?.valid ? cuponResult.cupon.code : null,
+          estado:             'pendiente',
+        })
+        .select('id')
+        .single();
+
+      if (insertError || !newSolicitud) {
+        throw new Error('Error al guardar solicitud de inscripción');
+      }
+
+      console.log('[INSCRIPCION] Solicitud creada:', newSolicitud.id);
+
+      // 2. LUEGO: Crear preferencia de pago en Mercado Pago CON el ID de solicitud
+      const mpRes = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payer_email: form.email,
+          externalReference: newSolicitud.id, // ← Pasar el ID de solicitud
           items: [{
             title: `Inscripción EDIT MASTER - ${planSeleccionado?.label}${cuponLabel}`,
             unit_price: montoEfectivo,
@@ -173,28 +201,23 @@ export default function InscripcionPage() {
         }),
       });
 
-      const mpData = await res.json();
-      if (!res.ok) throw new Error(mpData.error || 'Error al generar link de pago');
+      const mpData = await mpRes.json();
+      if (!mpRes.ok) throw new Error(mpData.error || 'Error al generar link de pago');
 
-      // Guardar solicitud para revisión manual del admin (sin crear usuario todavía)
-      await supabase.from('solicitudes_inscripcion').insert({
-        nombre:             form.nombre.trim(),
-        apellido:           form.apellido.trim(),
-        email:              form.email.trim().toLowerCase(),
-        telefono:           form.telefono.trim() || null,
-        consulta:           form.consulta.trim() || null,
-        plan_id:            planSeleccionado?.id,
-        plan_label:         planSeleccionado?.label,
-        monto:              montoEfectivo,
-        monto_original:     planSeleccionado?.monto || precio_base,
-        descuento_aplicado: cuponResult?.valid ? cuponResult.discount : 0,
-        cupon_codigo:       cuponResult?.valid ? cuponResult.cupon.code : null,
-        mp_preference_id:   mpData.id,
-      });
+      console.log('[INSCRIPCION] Preferencia creada:', mpData.id);
 
+      // 3. Actualizar solicitud con ID de preferencia
+      await supabase
+        .from('solicitudes_inscripcion')
+        .update({ mp_preference_id: mpData.id })
+        .eq('id', newSolicitud.id);
+
+      // 4. Consumir el cupón si fue usado
       if (cuponResult?.valid) useCupon(cuponResult.cupon.id);
 
+      // 5. Redirigir a Mercado Pago
       window.location.href = mpData.init_point;
+
     } catch (err) {
       setEstado('error');
       setErrMsg(err.message || 'Ocurrió un error. Intenta de nuevo.');

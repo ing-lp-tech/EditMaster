@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useAppSettings } from '../../context/AppSettingsContext';
 import { supabase } from '../../lib/supabase';
 
 const SECCIONES = [
@@ -33,6 +34,7 @@ const PAISES = [
 const DEFAULT_FORM = {
   email:              '',
   nombre:             '',
+  password:           '',
   cod_pais:           '+54',
   telefono:           '',
   activo:             true,
@@ -62,15 +64,22 @@ function Toggle({ checked, onChange, colorOn = 'bg-primary' }) {
   );
 }
 
-function buildWhatsappUrl(codPais, telefono, nombre, adminUrl) {
+function buildWhatsappUrl(codPais, telefono, nombre, adminUrl, password, email) {
   const numLimpio = telefono.replace(/\D/g, '').replace(/^0+/, '');
   const fullNum = `${codPais.replace('+', '')}${numLimpio}`;
-  const msg = `Hola ${nombre || ''}! Te dimos de alta como administrador en Edit Master. Podés ingresar al panel con tu email en: ${adminUrl}`;
+  
+  // Líneas dinámicas para el email y la contraseña
+  const emailLine = email ? `\nUsuario: ${email}` : '';
+  const passwordLine = password ? `\nContraseña: ${password}` : '';
+  
+  const msg = `Hola ${nombre || ''}! Te dimos de alta como administrador en Edit Master. Podés ingresar al panel en: ${adminUrl}${emailLine}${passwordLine}`;
+  
   return `https://wa.me/${fullNum}?text=${encodeURIComponent(msg)}`;
 }
 
 export default function AdminsPage() {
   const { isSuperAdmin } = useAuth();
+  const { site_url } = useAppSettings();
   const [perfiles, setPerfiles]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
@@ -108,6 +117,7 @@ export default function AdminsPage() {
     setEditingId(p.id);
     setForm({
       email:              p.email,
+      password:           p.password || '',
       nombre:             p.nombre || '',
       cod_pais:           p.cod_pais || '+54',
       telefono:           p.telefono || '',
@@ -129,6 +139,7 @@ export default function AdminsPage() {
 
   async function handleSave() {
     if (!form.email.trim()) { setError('El email es obligatorio.'); return; }
+    if (!editingId && !form.password.trim()) { setError('La contraseña es obligatoria.'); return; }
     setSaving(true);
     setError('');
     try {
@@ -270,7 +281,7 @@ export default function AdminsPage() {
                       <div className="flex items-center justify-end gap-1">
                         {hasPhone(p) && (
                           <a
-                            href={buildWhatsappUrl(p.cod_pais, p.telefono, p.nombre, `${window.location.origin}/admin`)}
+                            href={buildWhatsappUrl(p.cod_pais, p.telefono, p.nombre, site_url, p.password)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-2 rounded-lg text-on-surface-variant hover:bg-green-500/10 hover:text-green-500 transition-all"
@@ -351,6 +362,21 @@ export default function AdminsPage() {
                 />
               </div>
 
+              {/* Contraseña - solo para crear nuevo */}
+              {!editingId && (
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">Contraseña *</label>
+                  <input
+                    type="text"
+                    value={form.password}
+                    onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                    className="input-field"
+                    placeholder="Ej: Edit2024Master"
+                  />
+                  <p className="text-xs text-on-surface-variant mt-1.5">Se incluirá en el mensaje de WhatsApp.</p>
+                </div>
+              )}
+
               {/* WhatsApp */}
               <div>
                 <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">
@@ -378,7 +404,7 @@ export default function AdminsPage() {
                 </div>
                 {form.telefono.replace(/\D/g, '').length > 4 && (
                   <a
-                    href={buildWhatsappUrl(form.cod_pais, form.telefono, form.nombre, `${window.location.origin}/admin`)}
+                    href={buildWhatsappUrl(form.cod_pais, form.telefono, form.nombre, site_url, form.password)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold text-green-500 hover:text-green-400 transition-colors"
@@ -435,7 +461,7 @@ export default function AdminsPage() {
             <div className="flex gap-3 px-6 py-4 border-t border-outline-variant/20 shrink-0">
               <button
                 onClick={handleSave}
-                disabled={!form.email.trim() || saving}
+                disabled={!form.email.trim() || (!editingId && !form.password.trim()) || saving}
                 className="btn-primary flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {saving

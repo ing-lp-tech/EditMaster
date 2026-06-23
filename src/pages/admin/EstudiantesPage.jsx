@@ -71,6 +71,14 @@ export default function EstudiantesPage() {
 
     async function fetchEstudiantes() {
       try {
+        // Primero: obtener todos los emails de admins
+        const { data: admins } = await supabase
+          .from('admin_permisos')
+          .select('email');
+        
+        const adminEmails = new Set((admins || []).map(a => a.email.toLowerCase()));
+
+        // Luego: obtener estudiantes y filtrar admins
         const { data, error } = await supabase
           .from('perfiles')
           .select('id, nombre, apellido, email, telefono, activo, created_at, ultima_password, cursada')
@@ -79,7 +87,11 @@ export default function EstudiantesPage() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        if (isMounted) setEstudiantes(data || []);
+        
+        // Filtrar: excluir emails que son admins
+        const filteredData = (data || []).filter(e => !adminEmails.has(e.email.toLowerCase()));
+        
+        if (isMounted) setEstudiantes(filteredData);
       } catch (err) {
         console.error('[EstudiantesPage] Error:', err.message);
       } finally {

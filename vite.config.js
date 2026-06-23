@@ -27,6 +27,7 @@ const vercelApiMock = (env) => ({
         'create-molde-preference',
         'create-molde-transferencia',
         'molde-aprobar',
+        'create-admin-user',
       ];
       const matched = ROUTES.find(r => req.url.includes(r));
 
@@ -69,6 +70,8 @@ const vercelApiMock = (env) => ({
             handler = (await import('./api/create-molde-transferencia.js')).default;
           } else if (matched === 'molde-aprobar') {
             handler = (await import('./api/molde-aprobar.js')).default;
+          } else if (matched === 'create-admin-user') {
+            handler = (await import('./api/create-admin-user.js')).default;
           }
 
           await handler(req, res);

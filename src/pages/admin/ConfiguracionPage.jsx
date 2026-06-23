@@ -16,6 +16,8 @@ export default function ConfiguracionPage() {
     banco: '',
     descuento_transferencia: '0',
     wapp_admin: '',
+    plan_prueba_activo: false,
+    plan_prueba_precio: '100000',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,17 +32,19 @@ export default function ConfiguracionPage() {
         if (data) {
           const map = Object.fromEntries(data.map(r => [r.id, r.value]));
           setForm({
-            precio_base:    map.precio_base    ?? '350000',
-            precio_tachado: map.precio_tachado ?? '500000',
-            fecha_inicio:   map.fecha_inicio   ?? '15 de Julio',
-            test_mode_mp:   map.test_mode_mp === true || map.test_mode_mp === 'true',
-            site_url:       map.site_url ?? 'https://www.editmaster.co',
-            cbu:                     map.cbu                     ?? '',
-            alias_cbu:               map.alias_cbu               ?? '',
-            titular_cuenta:          map.titular_cuenta          ?? '',
-            banco:                   map.banco                   ?? '',
+            precio_base:           map.precio_base           ?? '350000',
+            precio_tachado:        map.precio_tachado        ?? '500000',
+            fecha_inicio:          map.fecha_inicio          ?? '15 de Julio',
+            test_mode_mp:          map.test_mode_mp === true || map.test_mode_mp === 'true',
+            site_url:              map.site_url              ?? 'https://www.editmaster.co',
+            cbu:                   map.cbu                   ?? '',
+            alias_cbu:             map.alias_cbu             ?? '',
+            titular_cuenta:        map.titular_cuenta        ?? '',
+            banco:                 map.banco                 ?? '',
             descuento_transferencia: map.descuento_transferencia ?? '0',
-            wapp_admin:              map.wapp_admin              ?? '',
+            wapp_admin:            map.wapp_admin            ?? '',
+            plan_prueba_activo:    map.plan_prueba_activo === true || map.plan_prueba_activo === 'true',
+            plan_prueba_precio:    map.plan_prueba_precio    ?? '100000',
           });
         }
         setLoading(false);
@@ -66,6 +70,8 @@ export default function ConfiguracionPage() {
       { id: 'banco',                   value: form.banco.trim() },
       { id: 'descuento_transferencia', value: String(Number(form.descuento_transferencia) || 0) },
       { id: 'wapp_admin',              value: form.wapp_admin.trim().replace(/\D/g, '') },
+      { id: 'plan_prueba_activo',      value: String(form.plan_prueba_activo) },
+      { id: 'plan_prueba_precio',      value: String(Number(form.plan_prueba_precio)) },
     ];
 
     const { error: err } = await supabase
@@ -150,6 +156,47 @@ export default function ConfiguracionPage() {
             <p className="text-[10px] text-on-surface-variant mt-1.5">
               Se muestra tachado como precio "original" en la landing page.
             </p>
+          </div>
+
+          {/* Plan de Prueba */}
+          <div className="bg-surface-container-low rounded-lg p-4 border-l-4 border-secondary space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block">
+                  Plan de Prueba
+                </label>
+                <p className="text-[10px] text-on-surface-variant mt-0.5">
+                  Opción de bajo costo para probar las transferencias
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={form.plan_prueba_activo}
+                  onChange={e => setForm(p => ({ ...p, plan_prueba_activo: e.target.checked }))}
+                  className="w-5 h-5"
+                />
+                <span className="text-xs font-bold">{form.plan_prueba_activo ? 'Activo' : 'Inactivo'}</span>
+              </div>
+            </div>
+            {form.plan_prueba_activo && (
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant block mb-2">
+                  Precio del Plan de Prueba (ARS)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-on-surface-variant">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={form.plan_prueba_precio}
+                    onChange={e => setForm(p => ({ ...p, plan_prueba_precio: e.target.value }))}
+                    className="input-field pl-8"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Vista previa */}

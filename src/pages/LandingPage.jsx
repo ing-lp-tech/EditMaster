@@ -78,7 +78,7 @@ const PILLARS = [
 ];
 
 export default function LandingPage() {
-  const { precio_base, precio_tachado, fecha_inicio } = useAppSettings();
+  const { precio_base, precio_tachado, fecha_inicio, plan_prueba_activo, plan_prueba_precio } = useAppSettings();
   const [flashPromo, setFlashPromo] = useState(null);
 
   useEffect(() => {
@@ -130,12 +130,22 @@ export default function LandingPage() {
                   <span className="text-on-surface-variant line-through text-sm">${precio_tachado.toLocaleString('es-AR')}</span>
                 </div>
               </div>
-              <div className="space-y-3">
-                <Link to="/inscripcion" className="btn-primary block text-center">Inscríbete Ahora</Link>
-                <p className="text-error font-label text-[10px] uppercase tracking-tighter text-center font-bold">
-                  Cupos limitados — asegurá el tuyo
-                </p>
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <Link to="/inscripcion" className="btn-primary block text-center flex-1 sm:flex-none">Inscríbete Ahora</Link>
+                {plan_prueba_activo && (
+                  <Link 
+                    to={`/inscripcion?plan=prueba`}
+                    className="px-6 py-3 rounded-lg font-label font-bold uppercase tracking-widest text-center bg-tertiary/20 border border-tertiary text-tertiary hover:bg-tertiary/30 active:scale-95 transition-all"
+                  >
+                    Plan Prueba: ${Number(plan_prueba_precio).toLocaleString('es-AR')}
+                  </Link>
+                )}
               </div>
+            </div>
+            <div className="pt-2">
+              <p className="text-error font-label text-[10px] uppercase tracking-tighter font-bold">
+                Cupos limitados — asegurá el tuyo
+              </p>
             </div>
           </div>
 

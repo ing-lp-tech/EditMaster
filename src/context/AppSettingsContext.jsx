@@ -7,19 +7,25 @@ const DEFAULTS = {
   fecha_inicio: '15 de Abril',
   test_mode_mp: false,
   site_url: 'https://www.editmaster.co',
+  plan_prueba_activo: false,
+  plan_prueba_precio: 100000,
 };
 
 const AppSettingsContext = createContext({ ...DEFAULTS, loaded: false, refetch: () => {} });
 
 function parseSettings(data) {
   const map = Object.fromEntries(data.map(r => [r.id, r.value]));
-  return {
-    precio_base:    map.precio_base    ? Number(map.precio_base)    : DEFAULTS.precio_base,
-    precio_tachado: map.precio_tachado ? Number(map.precio_tachado) : DEFAULTS.precio_tachado,
-    fecha_inicio:   map.fecha_inicio   || DEFAULTS.fecha_inicio,
-    test_mode_mp:   map.test_mode_mp === true || map.test_mode_mp === 'true',
-    site_url:       map.site_url       || DEFAULTS.site_url,
+  const result = {
+    precio_base:         map.precio_base         ? Number(map.precio_base)         : DEFAULTS.precio_base,
+    precio_tachado:      map.precio_tachado      ? Number(map.precio_tachado)      : DEFAULTS.precio_tachado,
+    fecha_inicio:        map.fecha_inicio        || DEFAULTS.fecha_inicio,
+    test_mode_mp:        map.test_mode_mp === true || map.test_mode_mp === 'true',
+    site_url:            map.site_url            || DEFAULTS.site_url,
+    plan_prueba_activo:  map.plan_prueba_activo === true || map.plan_prueba_activo === 'true',
+    plan_prueba_precio:  map.plan_prueba_precio  ? Number(map.plan_prueba_precio)  : DEFAULTS.plan_prueba_precio,
   };
+  console.log('[AppSettings] parseSettings:', { map, result });
+  return result;
 }
 
 export function AppSettingsProvider({ children }) {

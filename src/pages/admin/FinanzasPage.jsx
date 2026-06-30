@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { registrarAuditoria } from '../../utils/auditoria';
 
-const STORAGE_KEY = 'da_finanzas_v3';
 
 const CATEGORIAS = {
   ingreso: ['Matrícula', 'Cuota mensual', 'Transferencia alumno', 'Nequi', 'Daviplata', 'Efectivo', 'Venta de molde', 'Otro ingreso'],
@@ -45,8 +44,6 @@ async function compressImage(file, maxWidth = 800, maxQ = 0.6) {
     reader.onerror = rej;
   });
 }
-function loadLocal() { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : []; } catch { return []; } }
-function saveLocal(d) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {} }
 function toCSV(rows) {
   const cols = ['fecha', 'tipo', 'categoria', 'descripcion', 'monto', 'monto_pagado', 'deuda_restante', 'metodo', 'cobrador', 'tiene_deuda', 'deuda_estado'];
   return [cols.join(','), ...rows.map(r => cols.map(c => `"${r[c] ?? ''}"`).join(','))].join('\n');
@@ -561,10 +558,10 @@ export default function FinanzasPage() {
         throw new Error(`HTTP ${res.status}: ${err}`);
       }
       const rows = await res.json();
-      if (isMountedRef.current) { setMovimientos(rows); saveLocal(rows); setSyncStatus('ok'); }
+      if (isMountedRef.current) { setMovimientos(rows); setSyncStatus('ok'); }
     } catch (e) {
       console.error('[Finanzas] Error cargando:', e.message);
-      if (isMountedRef.current) { setSyncStatus('error'); setMovimientos(loadLocal()); }
+      if (isMountedRef.current) { setSyncStatus('error'); setMovimientos([]); }
     }
   }
 
@@ -719,8 +716,7 @@ export default function FinanzasPage() {
       // updated tiene monto_pagado y deuda_restante calculados por el trigger
       const next = movimientos.map(m => m.id === mov.id ? updated : m);
       setMovimientos(next);
-      saveLocal(next);
-      setSyncStatus('ok');
+            setSyncStatus('ok');
       // Actualizar abonoTarget con datos frescos
       setAbonoTarget(updated);
       // Si ya está saldado, cerrar el mini modal
@@ -872,12 +868,10 @@ export default function FinanzasPage() {
       if (editingId) {
         savedRow    = await apiUpdate(editingId, payload);
         const next  = movimientos.map(m => m.id === editingId ? savedRow : m);
-        setMovimientos(next); saveLocal(next);
-      } else {
+        setMovimientos(next);       } else {
         savedRow    = await apiInsert(payload);
         const next  = [savedRow, ...movimientos];
-        setMovimientos(next); saveLocal(next);
-      }
+        setMovimientos(next);       }
       setSyncStatus('ok');
       setShowModal(false); setEditingId(null); setSelectedFiles([]);
     } catch (err) {

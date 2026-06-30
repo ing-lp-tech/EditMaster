@@ -1,10 +1,42 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 // ── Cliente Supabase con permisos de admin (SERVICE_ROLE_KEY) ──
 const supabaseAdmin = createClient(
   process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// ── Validación de firma MercadoPago ──────────────────────────────────────────
+// MP envía: x-signature: ts=<timestamp>,v1=<hmac>  y  x-request-id: <uuid>
+// Docs: https://www.mercadopago.com.ar/developers/es/docs/your-integrations/notifications/webhooks
+function verifyMPSignature(req, paymentId) {
+  const secret = process.env.MP_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn('[MP_WEBHOOK] MP_WEBHOOK_SECRET no configurado — omitiendo validación de firma');
+    return true;
+  }
+
+  const xSignature = req.headers['x-signature'];
+  const xRequestId = req.headers['x-request-id'];
+  if (!xSignature || !xRequestId) return false;
+
+  const parts = Object.fromEntries(
+    xSignature.split(',').map(p => { const [k, v] = p.split('='); return [k.trim(), v?.trim()]; })
+  );
+  const ts = parts['ts'];
+  const v1 = parts['v1'];
+  if (!ts || !v1) return false;
+
+  const manifest = `id:${paymentId};request-id:${xRequestId};ts:${ts};`;
+  const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(v1, 'hex'));
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
   // Solo POST
@@ -19,6 +51,12 @@ export default async function handler(req, res) {
     // Mercado Pago envía eventos de tipo 'payment'
     if (type === 'payment') {
       const paymentId = data.id;
+
+      // Validar firma antes de procesar cualquier cosa
+      if (!verifyMPSignature(req, paymentId)) {
+        console.warn('[MP_WEBHOOK] Firma inválida — request rechazado');
+        return res.status(401).json({ error: 'Firma inválida' });
+      }
 
       // 1. Obtener detalles completos del pago desde API de MP
       const mpResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {

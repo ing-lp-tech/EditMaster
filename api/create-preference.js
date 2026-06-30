@@ -1,4 +1,5 @@
 import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { createClient } from '@supabase/supabase-js';
 
 // ── Orígenes permitidos ───────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
@@ -65,9 +66,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Email inválido' });
     }
 
-    // Validar items
+    // Validar items (estructura básica)
     if (!validateItems(items)) {
       return res.status(400).json({ error: 'Items inválidos — verificá precio, cantidad y moneda' });
+    }
+
+    // Si hay externalReference, validar y usar el precio desde la DB
+    // para que el cliente no pueda manipular el monto
+    let trustedItems = items;
+    if (externalReference) {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!supabaseUrl || !serviceKey) {
+        return res.status(500).json({ error: 'Configuración del servidor incompleta' });
+      }
+      const adminClient = createClient(supabaseUrl, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { data: solicitud, error: solErr } = await adminClient
+        .from('solicitudes_inscripcion')
+        .select('monto, email, estado')
+        .eq('id', externalReference)
+        .single();
+
+      if (solErr || !solicitud) {
+        return res.status(400).json({ error: 'Referencia de inscripción inválida' });
+      }
+      if (solicitud.estado === 'pagado') {
+        return res.status(400).json({ error: 'Esta inscripción ya fue pagada' });
+      }
+
+      // Usar el monto de la DB, ignorar el del cliente
+      trustedItems = items.map((item, i) => ({
+        ...item,
+        unit_price: i === 0 ? Number(solicitud.monto) : Number(item.unit_price),
+      }));
     }
 
     const accessToken = process.env.MP_ACCESS_TOKEN;
@@ -84,7 +117,7 @@ export default async function handler(req, res) {
     const protocol = isSafe ? 'https' : 'https';
     const baseUrl = host.startsWith('localhost') ? `http://${host}` : `${protocol}://${host}`;
 
-    const sanitizedItems = items.map(item => ({
+    const sanitizedItems = trustedItems.map(item => ({
       title: item.title.replace(/[<>]/g, ''), // strip any tag chars
       unit_price: Number(item.unit_price),
       quantity: 1,

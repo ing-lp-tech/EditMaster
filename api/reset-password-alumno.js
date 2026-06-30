@@ -106,9 +106,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Error al resetear contraseña: ' + updateError.message });
   }
 
-  // Guardar contraseña en perfiles para visibilidad del admin
-  await adminClient.from('perfiles').update({ ultima_password: newPassword }).eq('id', userId);
-
   return res.status(200).json({
     success: true,
     newPassword,

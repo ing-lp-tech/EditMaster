@@ -2,10 +2,7 @@ import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { createClient } from '@supabase/supabase-js';
 
 const ALLOWED_ORIGINS = [
-  'https://curso-molderia.vercel.app',
-  'https://molditex.vercel.app',
-  'https://www.molderia-digital.com',
-  'https://molderia-digital.com',
+  'https://curso-edicion.vercel.app',
   'http://localhost:5173',
   'http://localhost:4173',
 ];

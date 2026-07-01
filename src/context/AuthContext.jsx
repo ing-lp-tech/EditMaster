@@ -149,7 +149,20 @@ export function AuthProvider({ children }) {
     setUser(null);
     setPerfil(null);
     setPermisos(null);
-    try { await supabase.auth.signOut(); } catch {}
+    setPerfilError(false);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('[AuthContext] signOut falló (posible contención de sesión con varias pestañas), limpio local:', err?.message);
+    }
+    // Aunque signOut() haya fallado del lado del servidor, borramos el token
+    // guardado en localStorage a mano — si no, la sesión vieja queda activa
+    // y el usuario sigue viéndose "logueado" pese a haber tocado "Salir".
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch {}
     window.location.href = '/login';
   }
 

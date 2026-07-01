@@ -160,9 +160,14 @@ export default function InscripcionPage() {
       const cuponLabel = cuponResult?.valid ? ` | Cupón: ${cuponResult.cupon.code} (${cuponResult.label})` : '';
 
       // 1. PRIMERO: Crear solicitud de inscripción en Supabase
-      const { data: newSolicitud, error: insertError } = await supabase
+      // Generamos el UUID aquí para no necesitar SELECT después del INSERT
+      // (la política RLS solo permite SELECT a admins)
+      const solicitudId = crypto.randomUUID();
+
+      const { error: insertError } = await supabase
         .from('solicitudes_inscripcion')
         .insert({
+          id:                 solicitudId,
           nombre:             form.nombre.trim(),
           apellido:           form.apellido.trim(),
           email:              form.email.trim().toLowerCase(),
@@ -175,15 +180,14 @@ export default function InscripcionPage() {
           descuento_aplicado: cuponResult?.valid ? cuponResult.discount : 0,
           cupon_codigo:       cuponResult?.valid ? cuponResult.cupon.code : null,
           estado:             'pendiente',
-        })
-        .select('id')
-        .single();
+        });
 
-      if (insertError || !newSolicitud) {
+      if (insertError) {
         throw new Error('Error al guardar solicitud de inscripción');
       }
 
-      console.log('[INSCRIPCION] Solicitud creada:', newSolicitud.id);
+      const newSolicitud = { id: solicitudId };
+      console.log('[INSCRIPCION] Solicitud creada:', solicitudId);
 
       // 2. LUEGO: Crear preferencia de pago en Mercado Pago CON el ID de solicitud
       const mpRes = await fetch('/api/create-preference', {

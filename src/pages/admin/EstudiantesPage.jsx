@@ -81,7 +81,7 @@ export default function EstudiantesPage() {
         // Luego: obtener estudiantes y filtrar admins
         const { data, error } = await supabase
           .from('perfiles')
-          .select('id, nombre, apellido, email, telefono, activo, created_at, ultima_password, cursada')
+          .select('id, nombre, apellido, email, telefono, activo, created_at, cursada')
           .eq('rol', 'estudiante')
           .is('eliminado_en', null)
           .order('created_at', { ascending: false });
@@ -108,7 +108,7 @@ export default function EstudiantesPage() {
   async function refrescarLista() {
     const { data } = await supabase
       .from('perfiles')
-      .select('id, nombre, apellido, email, telefono, activo, created_at, ultima_password, cursada')
+      .select('id, nombre, apellido, email, telefono, activo, created_at, cursada')
       .eq('rol', 'estudiante')
       .is('eliminado_en', null)
       .order('created_at', { ascending: false });

@@ -66,7 +66,7 @@ async function fetchVimeoThumbnail(url) {
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export default function StudentPortal() {
-  const { user, perfil, loading, signOut } = useAuth();
+  const { user, perfil, loading, perfilError, retryPerfil, signOut } = useAuth();
   const nombre = perfil?.nombre || user?.user_metadata?.nombre || user?.email?.split('@')[0] || 'Estudiante';
 
   const [activeTab,       setActiveTab]       = useState('recursos');
@@ -283,6 +283,18 @@ export default function StudentPortal() {
         {loading ? (
           <div className="text-center py-20">
             <span className="material-symbols-outlined animate-spin text-4xl text-primary">refresh</span>
+          </div>
+        ) : perfilError ? (
+          <div className="card border border-outline-variant/20 text-center py-16">
+            <span className="material-symbols-outlined text-5xl text-error/40 mb-4">error</span>
+            <h2 className="font-headline font-bold text-xl mb-2">No pudimos cargar tu cuenta</h2>
+            <p className="text-on-surface-variant text-sm max-w-sm mx-auto mb-5">
+              Hubo un problema de conexión momentáneo. Probá de nuevo.
+            </p>
+            <button onClick={retryPerfil} className="btn-primary inline-flex items-center gap-2">
+              <span className="material-symbols-outlined text-base">refresh</span>
+              Reintentar
+            </button>
           </div>
         ) : !perfil?.activo ? (
           <div className="card border border-outline-variant/20 text-center py-16">

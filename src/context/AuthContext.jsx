@@ -12,11 +12,16 @@ const AuthContext = createContext({});
 
 export const useAuth = () => useContext(AuthContext);
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser]         = useState(null);
-  const [perfil, setPerfil]     = useState(null);
-  const [permisos, setPermisos] = useState(null);
-  const [loading, setLoading]   = useState(true);
+  const [user, setUser]             = useState(null);
+  const [perfil, setPerfil]         = useState(null);
+  const [permisos, setPermisos]     = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [perfilError, setPerfilError] = useState(false);
   const initDone = useRef(false);
 
   useEffect(() => {
@@ -43,6 +48,7 @@ export function AuthProvider({ children }) {
         } else {
           setPerfil(null);
           setPermisos(null);
+          setPerfilError(false);
           setLoading(false);
         }
       }
@@ -68,7 +74,13 @@ export function AuthProvider({ children }) {
     };
   }, [user]);
 
-  async function fetchAll(authUser) {
+  // fetchAll reintenta unas veces: con varias pestañas del sitio abiertas a la
+  // vez, Supabase puede rechazar esta consulta por contención del lock de
+  // sesión ("Lock ... was released because another request stole it") — es
+  // transitorio, no un problema real de la cuenta, así que no hay que
+  // rendirse en el primer intento.
+  async function fetchAll(authUser, attempt = 1) {
+    const MAX_ATTEMPTS = 3;
     const email = authUser.email?.toLowerCase() ?? '';
     const isSuperAdminUser = email === SUPER_ADMIN_EMAIL;
     const timeoutPromise = new Promise((_, reject) =>
@@ -77,7 +89,6 @@ export function AuthProvider({ children }) {
 
     try {
       if (isSuperAdminUser) {
-        // Super admin: solo necesita su perfil, tiene acceso total
         const { data } = await Promise.race([
           supabase
             .from('perfiles')
@@ -86,10 +97,10 @@ export function AuthProvider({ children }) {
             .single(),
           timeoutPromise,
         ]);
-        if (data) setPerfil(data);
-        setPermisos(null); // null = acceso completo
+        if (!data) throw new Error('perfil vacío');
+        setPerfil(data);
+        setPermisos(null);
       } else {
-        // Posible sub-admin: cargar perfil y permisos en paralelo
         const [perfilRes, permRes] = await Promise.race([
           Promise.all([
             supabase
@@ -105,16 +116,28 @@ export function AuthProvider({ children }) {
           ]),
           timeoutPromise,
         ]);
-        if (!perfilRes.error && perfilRes.data) setPerfil(perfilRes.data);
-        // permRes.data es null si no hay registro → acceso completo (admin viejo sin restricciones)
+        if (perfilRes.error || !perfilRes.data) throw perfilRes.error || new Error('perfil vacío');
+        setPerfil(perfilRes.data);
         setPermisos(permRes?.data ?? null);
       }
-    } catch {
-      // Timeout o error de red: continuar sin permisos granulares
-      setPermisos(null);
-    } finally {
+      setPerfilError(false);
+      setLoading(false);
+    } catch (err) {
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(500 * attempt); // 500ms, luego 1000ms
+        return fetchAll(authUser, attempt + 1);
+      }
+      console.error('[AuthContext] No se pudo cargar el perfil tras reintentos:', err?.message);
+      setPerfilError(true);
       setLoading(false);
     }
+  }
+
+  function retryPerfil() {
+    if (!user) return;
+    setLoading(true);
+    setPerfilError(false);
+    fetchAll(user);
   }
 
   async function signIn(email, password) {
@@ -138,7 +161,7 @@ export function AuthProvider({ children }) {
     (ADMIN_EMAILS.length > 0 && ADMIN_EMAILS.includes(user?.email?.toLowerCase()));
 
   return (
-    <AuthContext.Provider value={{ user, perfil, permisos, loading, isAdmin, isSuperAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, perfil, permisos, loading, perfilError, retryPerfil, isAdmin, isSuperAdmin, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

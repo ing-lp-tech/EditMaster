@@ -117,12 +117,14 @@ export default function EstudiantesPage() {
   }
 
   // ── FETCH SOLICITUDES WEB (inscripciones online sin dar de alta) ──────────────
+  // Incluye 'pendiente' (esperando pago) y 'pagado' (Mercado Pago ya confirmó el
+  // cobro pero todavía falta elegir cursada y dar de alta manualmente).
   async function fetchSolicitudes() {
     try {
       const { data } = await supabase
         .from('solicitudes_inscripcion')
         .select('*')
-        .eq('estado', 'pendiente')
+        .in('estado', ['pendiente', 'pagado'])
         .order('created_at', { ascending: false });
       setSolicitudes(data || []);
     } catch (err) {
@@ -130,16 +132,21 @@ export default function EstudiantesPage() {
     }
   }
 
-  // ── FETCH PENDIENTES (matrículas de Finanzas con alumno_data) ─────────────────
+  // ── FETCH PENDIENTES (matrículas en efectivo desde Finanzas con alumno_data) ──
+  // Excluye método 'Mercado Pago' — esos ya se gestionan en la pestaña
+  // "Solicitudes Web" (vía solicitudes_inscripcion), para no duplicarlos acá.
   async function fetchPendientes() {
     try {
-      const res = await fetch(
-        `${supabaseUrl}/rest/v1/finanzas_movimientos?categoria=eq.Matrícula&tipo=eq.ingreso&alumno_data=not.is.null&select=id,fecha,descripcion,monto,alumno_data&order=fecha.desc`,
-        { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-      );
-      if (!res.ok) return;
-      const rows = await res.json();
-      setPendientes(rows || []);
+      const { data, error } = await supabase
+        .from('finanzas_movimientos')
+        .select('id, fecha, descripcion, monto, alumno_data')
+        .eq('categoria', 'Matrícula')
+        .eq('tipo', 'ingreso')
+        .not('alumno_data', 'is', null)
+        .neq('metodo', 'Mercado Pago')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      setPendientes(data || []);
     } catch (err) {
       console.error('[EstudiantesPage] Error cargando pendientes:', err.message);
     }
@@ -475,10 +482,12 @@ export default function EstudiantesPage() {
           <div className="flex items-start gap-3 p-4 rounded-xl bg-secondary/10 border border-secondary/30">
             <span className="material-symbols-outlined text-secondary text-xl shrink-0 mt-0.5">info</span>
             <div>
-              <p className="text-sm font-bold text-secondary">Transferencias vía MercadoPago</p>
+              <p className="text-sm font-bold text-secondary">Inscripciones vía Mercado Pago</p>
               <p className="text-xs text-on-surface-variant mt-1">
-                Estas personas llenaron el formulario de inscripción y fueron redirigidas a MercadoPago.
-                <strong className="text-on-surface"> Verificá en tu app/celular que el pago llegó</strong> antes de dar de alta.
+                Estas personas llenaron el formulario de inscripción online y pagaron por Mercado Pago.
+                Las marcadas <strong className="text-secondary">"Pago confirmado"</strong> ya fueron cobradas automáticamente
+                (revisá Finanzas → Ingresos) — solo falta elegir la cursada y darlas de alta. Las marcadas
+                <strong className="text-on-surface"> "Esperando pago"</strong> todavía no completaron el pago.
               </p>
             </div>
           </div>
@@ -498,7 +507,14 @@ export default function EstudiantesPage() {
                       {(sol.nombre?.[0] || sol.email?.[0] || '?').toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm">{sol.nombre} {sol.apellido}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-sm">{sol.nombre} {sol.apellido}</p>
+                        {sol.estado === 'pagado' ? (
+                          <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-secondary/20 text-secondary">✓ Pago confirmado</span>
+                        ) : (
+                          <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Esperando pago</span>
+                        )}
+                      </div>
                       <p className="text-xs text-on-surface-variant">{sol.email}</p>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {sol.telefono && <span className="text-[10px] text-on-surface-variant">☎ {sol.telefono}</span>}

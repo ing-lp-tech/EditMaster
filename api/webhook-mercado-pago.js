@@ -110,82 +110,50 @@ export default async function handler(req, res) {
           console.error('[MP_WEBHOOK] Error actualizando solicitud:', updateError);
         }
 
-        // 5. Crear usuario en Supabase Auth
-        const tempPassword = Math.random().toString(36).slice(-16);
+        // 5. NO se crea la cuenta del alumno acá a propósito.
+        // El admin revisa el pago en Estudiantes → Solicitudes Web y hace
+        // "Confirmar y Dar de Alta" eligiendo la cursada correspondiente
+        // (api/crear-alumno.js). Esto también permite distinguir en esa
+        // pantalla los pagos de Mercado Pago de los pagos en efectivo
+        // (que se registran en Finanzas → efectivo por otro flujo).
         const emailToUse = solicitud.email.toLowerCase().trim();
 
-        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: emailToUse,
-          password: tempPassword,
-          email_confirm: true,
-        });
+        // 6. Registrar el ingreso en finanzas_movimientos (la tabla 'finanzas' no existe)
+        const esAnticipo = solicitud.plan_id &&
+          (solicitud.plan_id.includes('anticipo_50') || solicitud.plan_id.includes('anticipo_25'));
 
-        if (authError) {
-          console.error('[MP_WEBHOOK] Error creando Auth user:', authError);
-          // No fallar, continuar de todas formas
-        } else {
-          const uid = authUser.user.id;
-          console.log('[MP_WEBHOOK] ✅ Auth user creado:', uid);
-
-          // 6. Crear/completar perfil de estudiante (la PK de perfiles es 'id', no 'uid').
-          // Supabase ya crea una fila stub en perfiles al crear el auth user
-          // (nombre/apellido null, activo=false), así que hay que upsertear
-          // en vez de insertar para no chocar con esa fila existente.
-          const { error: perfilError } = await supabaseAdmin
-            .from('perfiles')
-            .upsert({
-              id: uid,
-              rol: 'estudiante',
+        const { error: finanzasError } = await supabaseAdmin
+          .from('finanzas_movimientos')
+          .insert({
+            tipo: 'ingreso',
+            categoria: 'Matrícula',
+            descripcion: `Inscripción ${solicitud.plan_label || solicitud.plan_id} - ${emailToUse}`,
+            monto: solicitud.monto_original || solicitud.monto,
+            fecha: new Date().toISOString().slice(0, 10),
+            metodo: 'Mercado Pago',
+            tiene_deuda: esAnticipo,
+            // El trigger fn_calcular_deuda_pagos suma 'pagos' para derivar
+            // monto_pagado / deuda_restante — hay que sembrar el primer abono acá.
+            pagos: [{
+              id: crypto.randomUUID(),
+              fecha: new Date().toISOString(),
+              monto: solicitud.monto,
+              metodo: 'Mercado Pago',
+              notas: `Payment ID ${paymentId}`,
+            }],
+            alumno_data: {
               nombre: solicitud.nombre,
               apellido: solicitud.apellido,
               email: emailToUse,
               telefono: solicitud.telefono || null,
-              activo: true,
-            }, { onConflict: 'id' });
+              cursada: null, // se define recién al "Dar de Alta"
+            },
+          });
 
-          if (perfilError) {
-            console.error('[MP_WEBHOOK] Error creando perfil:', perfilError);
-          } else {
-            console.log('[MP_WEBHOOK] ✅ Perfil estudiante creado');
-          }
-
-          // 7. Registrar el ingreso en finanzas_movimientos (la tabla 'finanzas' no existe)
-          const esAnticipo = solicitud.plan_id &&
-            (solicitud.plan_id.includes('anticipo_50') || solicitud.plan_id.includes('anticipo_25'));
-
-          const { error: finanzasError } = await supabaseAdmin
-            .from('finanzas_movimientos')
-            .insert({
-              tipo: 'ingreso',
-              categoria: 'Matrícula',
-              descripcion: `Inscripción ${solicitud.plan_label || solicitud.plan_id} - ${emailToUse}`,
-              monto: solicitud.monto_original || solicitud.monto,
-              fecha: new Date().toISOString().slice(0, 10),
-              metodo: 'Mercado Pago',
-              tiene_deuda: esAnticipo,
-              // El trigger fn_calcular_deuda_pagos suma 'pagos' para derivar
-              // monto_pagado / deuda_restante — hay que sembrar el primer abono acá.
-              pagos: [{
-                id: crypto.randomUUID(),
-                fecha: new Date().toISOString(),
-                monto: solicitud.monto,
-                metodo: 'Mercado Pago',
-                notas: `Payment ID ${paymentId}`,
-              }],
-              alumno_data: {
-                nombre: solicitud.nombre,
-                apellido: solicitud.apellido,
-                email: emailToUse,
-                telefono: solicitud.telefono || null,
-                cursada: 'Cursada 1',
-              },
-            });
-
-          if (finanzasError) {
-            console.error('[MP_WEBHOOK] Error creando finanzas:', finanzasError);
-          } else {
-            console.log('[MP_WEBHOOK] ✅ Registro finanzas creado');
-          }
+        if (finanzasError) {
+          console.error('[MP_WEBHOOK] Error creando finanzas:', finanzasError);
+        } else {
+          console.log('[MP_WEBHOOK] ✅ Registro finanzas creado');
         }
 
         // 8. Registrar pago en tabla de auditoría (opcional)

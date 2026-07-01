@@ -112,7 +112,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: msg });
   }
 
-  await adminClient.from('perfiles').upsert({
+  // ultima_password ya no existe en perfiles (24_security_fixes.sql la eliminó
+  // a propósito — las contraseñas ya están hasheadas en auth.users).
+  const { error: perfilError } = await adminClient.from('perfiles').upsert({
     id: newUser.user.id,
     nombre: nombre.trim(),
     apellido: (apellido || '').trim(),
@@ -120,9 +122,13 @@ export default async function handler(req, res) {
     telefono: (telefono || '').trim() || null,
     rol: 'estudiante',
     activo: true,
-    ultima_password: tempPassword,
     cursada: (cursada || 'Cursada 1').trim(),
   }, { onConflict: 'id' });
+
+  if (perfilError) {
+    console.error('[crear-alumno] Error creando perfil:', perfilError.message);
+    return res.status(500).json({ error: 'Usuario creado pero falló el perfil: ' + perfilError.message });
+  }
 
   return res.status(200).json({
     success: true,

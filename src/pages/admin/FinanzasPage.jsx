@@ -534,7 +534,17 @@ export default function FinanzasPage() {
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  const authHeaders = { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}`, 'Content-Type': 'application/json' };
+  // OJO: usar siempre el access_token de la sesión real, no la anon key sola —
+  // las RLS de finanzas_movimientos requieren rol 'authenticated', y la anon
+  // key pelada se evalúa como rol 'anon' (devuelve 0 filas siempre).
+  async function getAuthHeaders() {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${session?.access_token || supabaseKey}`,
+      'Content-Type': 'application/json',
+    };
+  }
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -550,7 +560,7 @@ export default function FinanzasPage() {
     try {
       const res = await fetch(
         `${supabaseUrl}/rest/v1/finanzas_movimientos?select=*&order=fecha.desc,created_at.desc&eliminado_en=is.null`,
-        { headers: authHeaders }
+        { headers: await getAuthHeaders() }
       );
       if (!isMountedRef.current) return;
       if (!res.ok) {
@@ -568,7 +578,7 @@ export default function FinanzasPage() {
   async function apiInsert(payload) {
     const res = await fetch(`${supabaseUrl}/rest/v1/finanzas_movimientos`, {
       method: 'POST',
-      headers: { ...authHeaders, Prefer: 'return=representation' },
+      headers: { ...(await getAuthHeaders()), Prefer: 'return=representation' },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -581,7 +591,7 @@ export default function FinanzasPage() {
   async function apiUpdate(id, patch) {
     const res = await fetch(`${supabaseUrl}/rest/v1/finanzas_movimientos?id=eq.${id}`, {
       method: 'PATCH',
-      headers: { ...authHeaders, Prefer: 'return=representation' },
+      headers: { ...(await getAuthHeaders()), Prefer: 'return=representation' },
       body: JSON.stringify(patch),
     });
     if (!res.ok) {
@@ -596,7 +606,7 @@ export default function FinanzasPage() {
     const mov = movimientos.find(m => m.id === id);
     const res = await fetch(`${supabaseUrl}/rest/v1/finanzas_movimientos?id=eq.${id}`, {
       method: 'PATCH',
-      headers: { ...authHeaders, Prefer: 'return=representation' },
+      headers: { ...(await getAuthHeaders()), Prefer: 'return=representation' },
       body: JSON.stringify({
         eliminado_en:        new Date().toISOString(),
         eliminado_por:       user?.id,

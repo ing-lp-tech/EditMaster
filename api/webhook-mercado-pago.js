@@ -127,10 +127,13 @@ export default async function handler(req, res) {
           const uid = authUser.user.id;
           console.log('[MP_WEBHOOK] ✅ Auth user creado:', uid);
 
-          // 6. Crear perfil de estudiante (la PK de perfiles es 'id', no 'uid')
+          // 6. Crear/completar perfil de estudiante (la PK de perfiles es 'id', no 'uid').
+          // Supabase ya crea una fila stub en perfiles al crear el auth user
+          // (nombre/apellido null, activo=false), así que hay que upsertear
+          // en vez de insertar para no chocar con esa fila existente.
           const { error: perfilError } = await supabaseAdmin
             .from('perfiles')
-            .insert({
+            .upsert({
               id: uid,
               rol: 'estudiante',
               nombre: solicitud.nombre,
@@ -138,7 +141,7 @@ export default async function handler(req, res) {
               email: emailToUse,
               telefono: solicitud.telefono || null,
               activo: true,
-            });
+            }, { onConflict: 'id' });
 
           if (perfilError) {
             console.error('[MP_WEBHOOK] Error creando perfil:', perfilError);

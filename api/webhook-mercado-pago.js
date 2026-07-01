@@ -127,11 +127,11 @@ export default async function handler(req, res) {
           const uid = authUser.user.id;
           console.log('[MP_WEBHOOK] ✅ Auth user creado:', uid);
 
-          // 6. Crear perfil de estudiante
+          // 6. Crear perfil de estudiante (la PK de perfiles es 'id', no 'uid')
           const { error: perfilError } = await supabaseAdmin
             .from('perfiles')
             .insert({
-              uid,
+              id: uid,
               rol: 'estudiante',
               nombre: solicitud.nombre,
               apellido: solicitud.apellido,
@@ -146,26 +146,36 @@ export default async function handler(req, res) {
             console.log('[MP_WEBHOOK] ✅ Perfil estudiante creado');
           }
 
-          // 7. Crear entrada en finanzas
-          const esAnticipo = solicitud.plan_id && 
+          // 7. Registrar el ingreso en finanzas_movimientos (la tabla 'finanzas' no existe)
+          const esAnticipo = solicitud.plan_id &&
             (solicitud.plan_id.includes('anticipo_50') || solicitud.plan_id.includes('anticipo_25'));
-          
-          const saldoDeuda = esAnticipo 
-            ? (solicitud.monto_original - solicitud.monto)
-            : 0; // 0 si es pago completo
 
           const { error: finanzasError } = await supabaseAdmin
-            .from('finanzas')
+            .from('finanzas_movimientos')
             .insert({
-              uid,
-              email: emailToUse,
-              valor_total: solicitud.monto_original,
-              monto_pagado: solicitud.monto,
-              saldo_deuda: Math.max(0, saldoDeuda),
-              estado: 'pagado',
-              metodo_pago: 'mercado_pago',
-              transferencia_number: paymentId,
-              plan: solicitud.plan_label || 'completo',
+              tipo: 'ingreso',
+              categoria: 'Matrícula',
+              descripcion: `Inscripción ${solicitud.plan_label || solicitud.plan_id} - ${emailToUse}`,
+              monto: solicitud.monto_original || solicitud.monto,
+              fecha: new Date().toISOString().slice(0, 10),
+              metodo: 'Mercado Pago',
+              tiene_deuda: esAnticipo,
+              // El trigger fn_calcular_deuda_pagos suma 'pagos' para derivar
+              // monto_pagado / deuda_restante — hay que sembrar el primer abono acá.
+              pagos: [{
+                id: crypto.randomUUID(),
+                fecha: new Date().toISOString(),
+                monto: solicitud.monto,
+                metodo: 'Mercado Pago',
+                notas: `Payment ID ${paymentId}`,
+              }],
+              alumno_data: {
+                nombre: solicitud.nombre,
+                apellido: solicitud.apellido,
+                email: emailToUse,
+                telefono: solicitud.telefono || null,
+                cursada: 'Cursada 1',
+              },
             });
 
           if (finanzasError) {

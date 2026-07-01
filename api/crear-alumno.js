@@ -59,14 +59,25 @@ export default async function handler(req, res) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Verificar rol admin en la BD
+  // Verificar que sea admin: rol='admin' en perfiles, o email activo en
+  // admin_permisos (sub-admin) — mismo criterio que is_admin() en la base.
   const { data: perfil } = await adminClient
     .from('perfiles')
     .select('rol')
     .eq('id', solicitante.id)
     .single();
 
-  if (perfil?.rol !== 'admin') {
+  let esAdmin = perfil?.rol === 'admin';
+  if (!esAdmin) {
+    const { data: permiso } = await adminClient
+      .from('admin_permisos')
+      .select('activo')
+      .eq('email', solicitante.email.toLowerCase())
+      .maybeSingle();
+    esAdmin = !!permiso && permiso.activo !== false;
+  }
+
+  if (!esAdmin) {
     return res.status(403).json({ error: 'Solo el administrador puede crear alumnos' });
   }
 

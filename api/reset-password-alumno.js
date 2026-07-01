@@ -52,14 +52,25 @@ export default async function handler(req, res) {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Verificar que el solicitante sea admin
+  // Verificar que sea admin: rol='admin' en perfiles, o email activo en
+  // admin_permisos (sub-admin) — mismo criterio que is_admin() en la base.
   const { data: perfilAdmin } = await adminClient
     .from('perfiles')
     .select('rol')
     .eq('id', solicitante.id)
     .single();
 
-  if (perfilAdmin?.rol !== 'admin') {
+  let esAdmin = perfilAdmin?.rol === 'admin';
+  if (!esAdmin) {
+    const { data: permiso } = await adminClient
+      .from('admin_permisos')
+      .select('activo')
+      .eq('email', solicitante.email.toLowerCase())
+      .maybeSingle();
+    esAdmin = !!permiso && permiso.activo !== false;
+  }
+
+  if (!esAdmin) {
     return res.status(403).json({ error: 'Solo el administrador puede resetear contraseñas' });
   }
 
